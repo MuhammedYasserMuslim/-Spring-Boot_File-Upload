@@ -38,16 +38,12 @@ public class FileUploadService {
             throw new FileStorageException("Could not create the directory where the uploaded files will be stored.",
                     ex);
         }
-
         String fileName = StringUtils.cleanPath(id + "-" + file.getName());
-
-
         try {
             // Check if the file's name contains invalid characters
             if (fileName.contains("..")) {
                 throw new FileStorageException("Sorry! Filename contains invalid path sequence " + fileName);
             }
-
             // Copy file to the target location (Replacing existing file with the same name)
             Path targetLocation = this.fileStorageLocation.resolve(fileName);
             InputStream targetStream = new FileInputStream(file);

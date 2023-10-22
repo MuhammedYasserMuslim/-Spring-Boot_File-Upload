@@ -1,11 +1,7 @@
 package com.spring.controller;
 
-import com.spring.entity.Image;
 import com.spring.services.FileUploadService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
