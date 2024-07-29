@@ -21,4 +21,9 @@ public class Image {
     private String name;
 
     private String imagePath;
+
+    public Image(String name, String imagePath) {
+        this.name = name;
+        this.imagePath = imagePath;
+    }
 }

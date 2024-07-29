@@ -1,8 +1,8 @@
 package com.spring.services;
 
 import com.spring.entity.Image;
-import com.spring.exception.FileStorageException;
-import com.spring.repository.ImageRepository;
+import com.spring.exception.exceptions.FileStorageException;
+import com.spring.exception.exceptions.convertMultipartFileToFileException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -12,81 +12,51 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Log4j2
 public class FileUploadService {
 
-    private Path fileStorageLocation;
+    private static final String BASE_PATH = "E:\\img\\";
 
-    private final ImageRepository imageRepository;
-    private final String basePath = "E:\\Images\\";
+    private final ImageService imageService;
 
 
-    public String storeFile(File file, Long id, String pathType) {
-
-        // create uploaded path
-        this.fileStorageLocation = Paths.get(basePath + pathType).toAbsolutePath().normalize();
-
+    public String uploadFile(Long id, String pathType, File file) {
+        Path fileStorageLocation = Path.of(BASE_PATH + pathType).toAbsolutePath().normalize();
         try {
-            Files.createDirectories(this.fileStorageLocation);
-        } catch (Exception ex) {
-            throw new FileStorageException("Could not create the directory where the uploaded files will be stored.",
-                    ex);
+            Files.createDirectories(fileStorageLocation);
+        } catch (IOException e) {
+            throw new FileStorageException(e.getMessage());
         }
         String fileName = StringUtils.cleanPath(id + "-" + file.getName());
+        if (fileName.contains(".."))
+            throw new FileStorageException("Sorry! Filename contains invalid path sequence " + fileName);
         try {
-            // Check if the file's name contains invalid characters
-            if (fileName.contains("..")) {
-                throw new FileStorageException("Sorry! Filename contains invalid path sequence " + fileName);
-            }
-            // Copy file to the target location (Replacing existing file with the same name)
-            Path targetLocation = this.fileStorageLocation.resolve(fileName);
-            InputStream targetStream = new FileInputStream(file);
-            Files.copy(targetStream, targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-            updateImagePath(id, pathType, pathType + "/" + fileName,file);
-
+            Path targetLocation = fileStorageLocation.resolve(fileName);
+            InputStream inputStream = new FileInputStream(file);
+            Files.copy(inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            updateImagePath(id, pathType, file);
             return fileName;
-        } catch (IOException ex) {
-            throw new FileStorageException("Could not store file " + fileName + ". Please try again!", ex);
+        } catch (IOException e) {
+            throw new FileStorageException(e.getMessage());
         }
     }
 
-    public File convertMultiPartFileToFile(final MultipartFile multipartFile) {
+    public File convertMultipartFileToFile(MultipartFile multipartFile) {
         final File file = new File(multipartFile.getOriginalFilename());
-        try (final FileOutputStream outputStream = new FileOutputStream(file)) {
-            outputStream.write(multipartFile.getBytes());
-        } catch (final IOException ex) {
-            log.error("Error converting the multi-part file to file= ", ex.getMessage());
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+            fileOutputStream.write(multipartFile.getBytes());
+        } catch (IOException e) {
+            throw new convertMultipartFileToFileException(e.getMessage());
         }
         return file;
     }
 
-    private void updateImagePath(Long id, String pathType, String imagePath,File file) {
-
-        if (pathType.contains("type")) {
-            // update author image path
-            Image image = new Image();
-            image.setImagePath(imagePath);
-            image.setName(file.getName());
-            imageRepository.save(image);
-
-        }
+    public void updateImagePath(Long id, String pathType, File file) {
+        Image image = new Image(file.getName(),pathType + "\\" + id + "-" + file.getName());
+        imageService.insert(image);
     }
-
-    public byte[] getFileFromFileSystem(String name) throws IOException {
-        Optional<Image> image = imageRepository.findByName(name);
-        String filePath=basePath+image.get().getImagePath();
-        byte[] images = Files.readAllBytes(new File(filePath).toPath());
-        return images;
-    }
-
-
-
-
 }
